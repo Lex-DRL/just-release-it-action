@@ -1,0 +1,185 @@
+name: "Just release it! 📦"
+description: "Easiest-to-setup GitHub release for python projects - just read version from pyproject.toml, build changelog and release it!"
+author: "Lex Darlog"
+
+branding:
+  # https://feathericons.com/
+  icon: package
+#  icon: tag
+#  icon: code
+  color: green
+#  color: blue
+#  color: gray-dark
+
+inputs:
+  toml-file:
+    description: 'Path to a TOML file to extract version from'
+    required: false
+    default: 'pyproject.toml'
+  attach-files:
+    description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
+    required: false
+    default: ''
+  skip-version-standardize:
+    description: 'Skip standardizing the version for the release title/tag (see: Lex-DRL/standardize-version-action)'
+    required: false
+    default: 'false'
+  skip-python-setup:
+    description: 'Skip setup-python step (only used for version standardization) if caller already did it. Irrelevant if version-standardization is skipped.'
+    required: false
+    default: 'false'
+  python-version:
+    description: 'Python version to use internally (only for version standardization). Irrelevant if version-standardization is skipped.'
+    required: false
+    default: '3.x'
+  is-pre-release:
+    description: |
+      Override pre-release status:
+      - '' (empty, default) - let the version-standardizing step to decide (or 'false' if this step is skipped)
+      - 'false' - force regular release
+      - 'true' or any other value - force pre-release
+    required: false
+    default: ''
+  is-draft:
+    description: 'Create release as draft'
+    required: false
+    default: 'false'
+  github-token:
+    description: "GitHub API token (used for remote PR metadata by git-cliff + for the actual release)"
+    required: false
+    default: "${{ github.token }}"
+
+#  skip-checkout:
+#    description: 'true if caller already checked out the repo'
+#    required: false
+#    default: 'false'
+
+outputs:
+  tag:
+    description: 'Final tag name (with "v" prefix if version was standardized, or the raw version extracted from TOML as-is)'
+    value: ${{ steps.version-outputs.outputs.tag }}
+  raw-version:
+    description: 'Version without "v" prefix (if it was standardized, or the raw version extracted from TOML as-is)'
+    value: ${{ steps.version-outputs.outputs.raw_version }}
+  is-pre:
+    description: 'Whether the release is marked as pre-release'
+    value: ${{ steps.version-outputs.outputs.is_pre }}
+  changelog:
+    description: 'The auto-generated changelog (release notes)'
+    value: ${{ steps.build-changelog.outputs.content }}
+
+runs:
+  using: "composite"
+  steps:
+#    - name: Checkout repository
+#      if: inputs.skip-checkout != 'true'
+#      uses: actions/checkout@v6
+#      with:
+#        fetch-depth: 0
+
+    - name: ➡️ Extract version from 'pyproject.toml'
+      id: toml-version
+      uses: SebRollen/toml-action@v1.2.0
+      with:
+        file: ${{ inputs.toml-file }}
+        field: 'project.version'
+
+    - name: 🔢 Standardize Version
+      id: standard-version
+      if: inputs.skip-version-standardize == '' || inputs.skip-version-standardize == 'false'
+      uses: Lex-DRL/standardize-version-action@main
+      with:
+        version: ${{ steps.toml-version.outputs.value }}
+        python-version: ${{ inputs.python-version }}
+        skip-python-setup: ${{ inputs.skip-python-setup }}
+
+    - name: Set version outputs (whether with standardization or not)
+      id: version-outputs
+      # To avoid unnecessary python setup, do it in pure bash:
+      shell: bash
+      run: |
+        if [ -z '${{ inputs.skip-version-standardize }}' ] || [ '${{ inputs.skip-version-standardize }}' = 'false' ]; then
+          echo 'tag=${{ steps.standard-version.outputs.v }}' >> "$GITHUB_OUTPUT"
+          echo 'raw_version=${{ steps.standard-version.outputs.full }}' >> "$GITHUB_OUTPUT"
+          if [ -z '${{ inputs.is-pre-release }}' ]; then
+            echo 'is_pre=${{ steps.standard-version.outputs.is-pre }}' >> "$GITHUB_OUTPUT"
+          elif [ '${{ inputs.is-pre-release }}' = 'false' ]; then
+            echo 'is_pre=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'is_pre=true' >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo 'tag=${{ steps.toml-version.outputs.value }}' >> "$GITHUB_OUTPUT"
+          echo 'raw_version=${{ steps.toml-version.outputs.value }}' >> "$GITHUB_OUTPUT"
+          if [ -z '${{ inputs.is-pre-release }}' ] || [ '${{ inputs.is-pre-release }}' = 'false' ]; then
+            echo 'is_pre=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'is_pre=true' >> "$GITHUB_OUTPUT"
+          fi
+        fi
+
+    - name: Prepare default git-cliff configuration
+      shell: bash
+      run: |
+        cat > /tmp/cliff.toml << 'EOT'
+        [git]
+        filter_unconventional = false
+        sort_commits = "oldest"
+        topo_order_commits = true
+        
+        commit_parsers = [
+          { message = "^Merge pull request", group = "Changes" },
+          { message = "^feat", group = "Features" },
+          { message = "^fix", group = "Fixes" },
+          { message = "^docs", group = "Documentation" },
+          { message = "^refactor", group = "Refactor" },
+          { message = ".*", group = "Changes" },  # catch-all for everything else
+        ]
+        
+        [remote.github]
+        owner = "${{ github.repository_owner }}"
+        repo = "${{ github.repository }}"
+        
+        [changelog]
+        header = "## What's Changed\n"
+        body = """
+        {% for group, commits in commits | group_by(attribute="group") %}
+        ### {{ group | upper_first }}
+        {% for commit in commits %}
+        - {% if commit.remote.pr_number %}[{{ commit.message }}](https://github.com/${{ github.repository }}/pull/{{ commit.remote.pr_number }}){% else %}{{ commit.message }}{% endif %} ({{ commit.id | truncate(length=8, end="") }})
+          {% if commit.body %}
+            {% for line in commit.body | split(pat="\n") %}
+              - {{ line | trim }}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+        {% endfor %}
+        """
+        footer = ""
+        EOT
+
+    - name: 📝 Build changelog with git-cliff ⛰️
+      id: build-changelog
+      uses: orhun/git-cliff-action@v4
+      with:
+#        version: ${{ steps.version-outputs.outputs.raw_version }}  # version of cliff itself
+        config: /tmp/cliff.toml
+        args: --unreleased --strip all
+      env:
+        OUTPUT: /tmp/changelog-just-release-it.md
+        GITHUB_REPO: ${{ github.repository }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || inputs.github-token || github.token }}
+
+#    - name: 🔄 Create GitHub Release
+    - name: 📦 Create GitHub Release
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ steps.version-outputs.outputs.tag }}
+        name: ${{ steps.version-outputs.outputs.tag }}
+        body: ${{ steps.build-changelog.outputs.content }}
+        files: ${{ inputs.attach-files }}
+        draft: ${{ inputs.is-draft }}
+        prerelease: ${{ steps.version-outputs.outputs.is_pre }}
+        token: ${{ env.GITHUB_TOKEN || inputs.github-token || github.token }}
+        # Other defaults to possibly expose as inputs later:
+        # make_latest: 'auto'     # GitHub decides based on prerelease/draft
