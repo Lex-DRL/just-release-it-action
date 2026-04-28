@@ -274,13 +274,15 @@ runs:
           { message = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->${{ inputs.cat-revert }}" },
         
           # ✨ New Features
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new|add(s|ed)?|supports?)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new|add(s|ed)?|supports?)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
         
           # 🚀 Improvements
           { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(upd(ate[ds]?)?|chang(e[ds]?|ing))\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
           { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
           { message = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(upd(ate[ds]?)?|chang(e[ds]?|ing))\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
           { message = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
         
           # 🛠️ Fixes
