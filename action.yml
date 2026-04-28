@@ -13,17 +13,93 @@ branding:
 
 inputs:
   project-toml-file:
-    description: 'Path to a TOML file to extract version from'
+    description: 'Path to a TOML file to extract version from.'
     required: false
     default: 'pyproject.toml'
+  project-toml-version-field:
+    description: "A specific field in TOML file to read version from."
+    required: false
+    default: 'project.version'
+  attach-files:
+    description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
+    required: false
+    default: ''
+  cat-breaking:
+    description: 'The title used for "Breaking Changes" category.'
+    required: false
+    default: '💥 Breaking Changes 💥'
+  cat-revert:
+    description: 'The title used for "Reverts/rollbacks" category.'
+    required: false
+    default: '↩️ Rollbacks'
+    # ⏮️↩️↶❌🔙
+  cat-feat:
+    description: 'The title used for "New Features" category.'
+    required: false
+    default: '✨ New Features'
+  cat-enhance:
+    description: 'The title used for "Improvements/enhancements" category.'
+    required: false
+    default: '🚀 Improvements'
+  cat-fix:
+    description: 'The title used for "Fixes" category.'
+    required: false
+    default: '🛠️ Fixes'
+  cat-perf:
+    description: 'The title used for "Performance" category.'
+    required: false
+    default: '⚡ Performance'
+  cat-security:
+    description: 'The title used for "Security" category.'
+    required: false
+    default: '🔒 Security'
+  cat-doc:
+    description: 'The title used for "Documentation" category.'
+    required: false
+    default: '📝 Documentation'
+  cat-refactor:
+    description: 'The title used for "Refactor" category.'
+    required: false
+    default: '♻️ Refactor'
+  cat-test:
+    description: 'The title used for "Tests" category.'
+    required: false
+    default: '🔬 Tests'
+    # 🧪
+  cat-style:
+    description: 'The title used for "Style" category.'
+    required: false
+    default: '🎨 Code Style'
+  cat-build:
+    description: 'The title used for "Build/Packaging" category.'
+    required: false
+    default: '📦 Build/Packaging'
+  cat-ci:
+    description: 'The title used for "CI/CD" (Continuous integration/delivery) category.'
+    required: false
+    default: '🤖 CI/CD'
+    # 👷
+  cat-chore:
+    description: 'The title used for "Chore/Maintenance" category.'
+    required: false
+    default: '🧹 Maintenance'
+  cat-version:
+    description: 'The title used for "Version" category.'
+    required: false
+    default: 'Version'
+  cat-unclassified-multi:
+    description: "The title used for an unclassified / \"Other Changes\" category, when any other categories are also detected for a release."
+    required: false
+    default: '🔀 Other changes'
+  cat-unclassified-only:
+    description: "The title used when only the unclassified / \"Other Changes\" category (and optionally, \"Version\") is detected for a release."
+    required: false
+    default: "⚙️ What's changed"
   cliff-config-file:
     description: |
       Provide an in-repo path to your own TOML file (e.g. "cliff.toml") with custom config for `orhun/git-cliff-action` (used internally to generate changelog).
-      When left empty, the default one us used.
-    required: false
-    default: ''
-  attach-files:
-    description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
+      When provided, it completely replaces the template that comes with "Just release it!" - including all the detected categories, the release notes format... everything.
+      When left empty, the bundled one is used.
     required: false
     default: ''
   skip-version-standardize:
@@ -95,7 +171,7 @@ runs:
       uses: SebRollen/toml-action@v1.2.0
       with:
         file: ${{ inputs.project-toml-file }}
-        field: 'project.version'
+        field: ${{ inputs.project-toml-version-field }}
 
     - name: 🔢 Standardize Version
       id: standard-version
@@ -185,77 +261,73 @@ runs:
         
           # https://gitmoji.dev/
         
-          # Breaking changes
+          # 💥 Breaking Changes 💥
           # 1. Conventional breaking commits (feat!, fix!, BREAKING CHANGE footer) — native `cliff` field:
-          { breaking = true, group = "<!-- 00 -->💥 Breaking Changes 💥" },
+          { breaking = true, group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
           # 2. PR titles starting with "breaking" or the same "prefix!" pattern:
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(break(ing)?\\b|[a-zA-Z_]+(\\([a-zA-Z_]+\\))?!)", group = "<!-- 00 -->💥 Breaking Changes 💥" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(break(ing)?\\b|[a-zA-Z_]+(\\([a-zA-Z_]+\\))?!)", group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
           # 3. Plain commit messages starting with "breaking":
-          { message = "(?i)^[^a-zA-Z_0-9-]*break(ing)?\\b", group = "<!-- 00 -->💥 Breaking Changes 💥" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*break(ing)?\\b", group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
         
-          # Reverts/rollbacks
-          # ⏮️↩️↶❌🔙
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->↩️ Rollbacks" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->↩️ Rollbacks" },
+          # ↩️ Rollbacks/Reverts
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->${{ inputs.cat-revert }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->${{ inputs.cat-revert }}" },
         
-          # New Features
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->✨ New Features" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->✨ New Features" },
+          # ✨ New Features
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
         
-          # Improvements
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->🚀 Improvements" },
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->🚀 Improvements" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->🚀 Improvements" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->🚀 Improvements" },
+          # 🚀 Improvements
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
         
-          # Bug fixes
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->🛠️ Fixes" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->🛠️ Fixes" },
+          # 🛠️ Fixes
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->${{ inputs.cat-fix }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->${{ inputs.cat-fix }}" },
         
-          # Performance
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->⚡ Performance" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->⚡ Performance" },
+          # ⚡ Performance
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->${{ inputs.cat-perf }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->${{ inputs.cat-perf }}" },
         
-          # Security
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->🔒 Security" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->🔒 Security" },
+          # 🔒 Security
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->${{ inputs.cat-security }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->${{ inputs.cat-security }}" },
         
-          # Documentation
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*doc(s|umentation)?\\b", group = "<!-- 07 -->📝 Documentation" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*doc(s|umentation)?\\b", group = "<!-- 07 -->📝 Documentation" },
+          # 📝 Documentation
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(doc(s|umentation)?|readme)\\b", group = "<!-- 07 -->${{ inputs.cat-doc }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(doc(s|umentation)?|readme)\\b", group = "<!-- 07 -->${{ inputs.cat-doc }}" },
         
-          # Refactor
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->♻️ Refactor" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->♻️ Refactor" },
+          # ♻️ Refactor
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->${{ inputs.cat-refactor }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->${{ inputs.cat-refactor }}" },
         
-          # Tests
-          # 🧪
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->🔬 Tests" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->🔬 Tests" },
+          # 🔬 Tests
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->${{ inputs.cat-test }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->${{ inputs.cat-test }}" },
         
-          # Style
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->🎨 Code Style" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->🎨 Code Style" },
+          # 🎨 Code Style
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->${{ inputs.cat-style }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->${{ inputs.cat-style }}" },
         
-          # Build
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->📦 Build/Packaging" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->📦 Build/Packaging" },
+          # 📦 Build/Packaging
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->${{ inputs.cat-build }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->${{ inputs.cat-build }}" },
         
-          # CI/CD
-          # 👷
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->🤖 CI/CD" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->🤖 CI/CD" },
+          # 🤖 CI/CD
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->${{ inputs.cat-ci }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->${{ inputs.cat-ci }}" },
         
-          # Chore
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->🧹 Chore" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->🧹 Chore" },
+          # 🧹 Maintenance
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->${{ inputs.cat-chore }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->${{ inputs.cat-chore }}" },
         
           # Version-related changes - caught BEFORE the catch-all, inserted after
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(v|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->Version" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(v|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->Version" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(v|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->${{ inputs.cat-version }}" },
+          { message = "(?i)^[^a-zA-Z_0-9-]*(v\\.*[0-9]+|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->${{ inputs.cat-version }}" },
         
           # Catch-all: everything else (uncategorized commits AND uncategorized PR merges)
-          # ⚙️
           { message = ".*", group = "<!-- 90 -->🔀 Changes" },
         ]
         
@@ -272,14 +344,14 @@ runs:
         {%- set has_specific = false -%}
         {%- for g, gc in grouped -%}
           {%- set dg = g | split(pat="-->") | last | trim -%}
-          {%- if dg != "🔀 Changes" and dg != "Version" -%}
+          {%- if dg != "🔀 Changes" and dg != "${{ inputs.cat-version }}" -%}
             {%- set_global has_specific = true -%}
           {%- endif -%}
         {%- endfor -%}
         {%- for group, commits in grouped -%}
         {%- set display_group = group | split(pat="-->") | last | trim -%}
         {% if display_group == "🔀 Changes" -%}
-        {%- if has_specific %}## 🔀 Other changes{% else %}## ⚙️ What's changed{% endif %}
+        {%- if has_specific %}## ${{ inputs.cat-unclassified-multi }}{% else %}## ${{ inputs.cat-unclassified-only }}{% endif %}
         {%- else %}
         ## {{ display_group }}
         {%- endif %}
