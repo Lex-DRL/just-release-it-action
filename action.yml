@@ -259,6 +259,10 @@ runs:
           # Field matches only fire when remote.pr_title is set (i.e., actual PR merges),
           # so they never interfere with regular commits.
         
+          # The "<!-- X-Y -->" prefix in each group name sets their display order.
+          # It's used only internally and never gets to the final output -
+          # thanks to "striptags" in the template.
+        
           # https://gitmoji.dev/
         
           # 💥 Breaking Changes 💥
@@ -345,13 +349,13 @@ runs:
         {%- set grouped = commits | group_by(attribute="group") -%}
         {%- set has_specific = false -%}
         {%- for g, gc in grouped -%}
-          {%- set dg = g | split(pat="-->") | last | trim -%}
+          {%- set dg = g | striptags | trim | upper_first -%}
           {%- if dg != "🔀 Changes" and dg != "${{ inputs.cat-version }}" -%}
             {%- set_global has_specific = true -%}
           {%- endif -%}
         {%- endfor -%}
         {%- for group, commits in grouped -%}
-        {%- set display_group = group | split(pat="-->") | last | trim -%}
+        {%- set display_group = group | striptags | trim | upper_first -%}
         {% if display_group == "🔀 Changes" -%}
         {%- if has_specific %}## ${{ inputs.cat-unclassified-multi }}{% else %}## ${{ inputs.cat-unclassified-only }}{% endif %}
         {%- else %}
