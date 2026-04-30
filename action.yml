@@ -28,6 +28,10 @@ inputs:
     description: 'The title used for "Breaking Changes" category.'
     required: false
     default: '💥 Breaking Changes 💥'
+  cat-depr:
+    description: 'The title used for "Deprecations" category.'
+    required: false
+    default: '⚠️ Deprecations'
   cat-revert:
     description: 'The title used for "Reverts/rollbacks" category.'
     required: false
@@ -252,7 +256,7 @@ runs:
         topo_order_commits = true
         protect_breaking_commits = true
         # This ^ prevents commits with `breaking = true` from being suppressed by any `{ ..., skip = true }` parser.
-        # Skips aren't used in this template, but let's have it just as a fail-safe for the future.
+        # Skips aren't used in this template yet, but let's have it just as a fail-safe for the future.
         
         commit_parsers = [
           # Each category: PR-title field match first, then commit message match.
@@ -265,76 +269,91 @@ runs:
         
           # https://gitmoji.dev/
         
+          # Order-1
+          # ❗ Important warnings
+        
           # 💥 Breaking Changes 💥
           # 1. Conventional breaking commits (feat!, fix!, BREAKING CHANGE footer) — native `cliff` field:
-          { breaking = true, group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
+          { breaking = true, group = "<!-- 1-1 -->${{ inputs.cat-breaking }}" },
           # 2. PR titles starting with "breaking" or the same "prefix!" pattern:
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(break(ing)?\\b|[a-zA-Z_]+(\\([a-zA-Z_]+\\))?!)", group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
-          # 3. Plain commit messages starting with "breaking":
-          { message = "(?i)^[^a-zA-Z_0-9-]*break(ing)?\\b", group = "<!-- 00 -->${{ inputs.cat-breaking }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(💥|❗|❕|‼️|‼|:boom:|[a-zA-Z_]+(\\([a-zA-Z_0-9-]+\\))?!\\s*:|break(s|ing)?\\b)", group = "<!-- 1-1 -->${{ inputs.cat-breaking }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(💥|❗|❕|‼️|‼|:boom:|[a-zA-Z_]+(\\([a-zA-Z_0-9-]+\\))?!\\s*:|break(s|ing)?\\b)", group = "<!-- 1-1 -->${{ inputs.cat-breaking }}" },
+          # 3. Plain ^ commit messages with the same start
         
-          # ↩️ Rollbacks/Reverts
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->${{ inputs.cat-revert }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(revert|undo|(rl|roll)\\s*(bk|back))\\b", group = "<!-- 01 -->${{ inputs.cat-revert }}" },
+          # ⚠️ Deprecations
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?depr(ecat(ed?|ing|ion)?)?s?\\b", group = "<!-- 1-2 -->${{ inputs.cat-depr }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?depr(ecat(ed?|ing|ion)?)?s?\\b", group = "<!-- 1-2 -->${{ inputs.cat-depr }}" },
+        
+          # ↩️ Rollbacks
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(↩️|↩|↶|🔙|⏪️|⏪|:rewind:|(revert|undo|(rl|roll)\\s*(bk|back)s?)\\b)", group = "<!-- 1-3 -->${{ inputs.cat-revert }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(↩️|↩|↶|🔙|⏪️|⏪|:rewind:|(revert|undo|(rl|roll)\\s*(bk|back)s?)\\b)", group = "<!-- 1-3 -->${{ inputs.cat-revert }}" },
+        
+          # Order-2
+          # 👨🏻 User-oriented updates
         
           # ✨ New Features
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new|add(s|ed)?|supports?)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(feat(ure)?|new|add(s|ed)?|supports?)\\b", group = "<!-- 02 -->${{ inputs.cat-feat }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(✨|🌟|⭐|🎉|:sparkles:|:tada:|new(\\([a-zA-Z_0-9-]+\\))?!?\\s*:|(feat(ure)?|(add|support)(e?[ds]?|ing)?)\\b)", group = "<!-- 2-1 -->${{ inputs.cat-feat }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(✨|🌟|⭐|🎉|:sparkles:|:tada:|new(\\([a-zA-Z_0-9-]+\\))?!?\\s*:|(feat(ure)?|(add|support)(e?[ds]?|ing)?)\\b)", group = "<!-- 2-1 -->${{ inputs.cat-feat }}" },
         
           # 🚀 Improvements
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(upd(ate[ds]?)?|chang(e[ds]?|ing))\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(upd(ate[ds]?)?|chang(e[ds]?|ing))\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(more\\s+)?(better|robust(ness)?)\\b", group = "<!-- 03 -->${{ inputs.cat-enhance }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🚀|🚩|🚸|♿️|:rocket:|:triangular_flag_on_post:|:children_crossing:|:wheelchair:|(upd(ate[ds]?)?|chang(e[ds]?|ing)|(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?|(more\\s+)?(better|robust(ness)?))\\b)", group = "<!-- 2-2 -->${{ inputs.cat-enhance }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🚀|🚩|🚸|♿️|:rocket:|:triangular_flag_on_post:|:children_crossing:|:wheelchair:|(upd(ate[ds]?)?|chang(e[ds]?|ing)|(enhn?c?|enhance?|impr|improve?)(ment|mn?t?)?|(more\\s+)?(better|robust(ness)?))\\b)", group = "<!-- 2-2 -->${{ inputs.cat-enhance }}" },
         
           # 🛠️ Fixes
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->${{ inputs.cat-fix }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(bug(fix)?|fix)\\b", group = "<!-- 04 -->${{ inputs.cat-fix }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🛠️|🛠|🐛|🩹|🚑️|🚑|🚨|🥅|:bug:|:adhesive_bandage:|:ambulance:|:rotating_light:|:goal_net:|(bug(fix)?|fix(e?[ds]?|ing)?)\\b)", group = "<!-- 2-3 -->${{ inputs.cat-fix }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🛠️|🛠|🐛|🩹|🚑️|🚑|🚨|🥅|:bug:|:adhesive_bandage:|:ambulance:|:rotating_light:|:goal_net:|(bug(fix)?|fix(e?[ds]?|ing)?)\\b)", group = "<!-- 2-3 -->${{ inputs.cat-fix }}" },
         
           # ⚡ Performance
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->${{ inputs.cat-perf }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(prf|perf(ormance)?)\\b", group = "<!-- 05 -->${{ inputs.cat-perf }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(⚡️|⚡|:zap:|pe?rf(ormance)?\\b)", group = "<!-- 2-4 -->${{ inputs.cat-perf }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(⚡️|⚡|:zap:|pe?rf(ormance)?\\b)", group = "<!-- 2-4 -->${{ inputs.cat-perf }}" },
         
           # 🔒 Security
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->${{ inputs.cat-security }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*sec(urity)?\\b", group = "<!-- 06 -->${{ inputs.cat-security }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🔒|🔐|🛡️|🛡|:lock:|:closed_lock_with_key:|sec(urity)?\\b)", group = "<!-- 2-5 -->${{ inputs.cat-security }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🔒|🔐|🛡️|🛡|:lock:|:closed_lock_with_key:|sec(urity)?\\b)", group = "<!-- 2-5 -->${{ inputs.cat-security }}" },
+        
+          # Order-3
+          # 👨🏻‍💻 Dev-oriented updates
         
           # 📝 Documentation
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(doc(s|umentation)?|readme)\\b", group = "<!-- 07 -->${{ inputs.cat-doc }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(doc(s|umentation)?|readme)\\b", group = "<!-- 07 -->${{ inputs.cat-doc }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(📝|📄|💬|:memo:|:page_facing_up:|:speech_balloon:|(doc(ument)?(e?[ds]?|ing|ation)?|readme)\\b)", group = "<!-- 3-1 -->${{ inputs.cat-doc }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(📝|📄|💬|:memo:|:page_facing_up:|:speech_balloon:|(doc(ument)?(e?[ds]?|ing|ation)?|readme)\\b)", group = "<!-- 3-1 -->${{ inputs.cat-doc }}" },
         
           # ♻️ Refactor
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->${{ inputs.cat-refactor }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*refac(tor(ing)?)?\\b", group = "<!-- 08 -->${{ inputs.cat-refactor }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(♻️|♻|🚚|:recycle:|:truck:|refac(tor(ing)?)?\\b)", group = "<!-- 3-2 -->${{ inputs.cat-refactor }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(♻️|♻|🚚|:recycle:|:truck:|refac(tor(ing)?)?\\b)", group = "<!-- 3-2 -->${{ inputs.cat-refactor }}" },
         
           # 🔬 Tests
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->${{ inputs.cat-test }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(tst|test)s?\\b", group = "<!-- 09 -->${{ inputs.cat-test }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🔬|🧪|⚗️|✅|🦺|:test_tube:|:alembic:|:white_check_mark:|:safety_vest:|te?st(e?[ds]?|ing)?\\b)", group = "<!-- 3-3 -->${{ inputs.cat-test }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🔬|🧪|⚗️|✅|🦺|:test_tube:|:alembic:|:white_check_mark:|:safety_vest:|te?st(e?[ds]?|ing)?\\b)", group = "<!-- 3-3 -->${{ inputs.cat-test }}" },
         
           # 🎨 Code Style
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->${{ inputs.cat-style }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(cd|code)?(fmt|format|stl|style?)\\b", group = "<!-- 10 -->${{ inputs.cat-style }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🎨|:art:|(cd|code)?[^a-zA-Z0-9]*(fo?r?ma?t|sty?le?)(e?[ds]?|ing)?\\b)", group = "<!-- 3-4 -->${{ inputs.cat-style }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🎨|:art:|(cd|code)?[^a-zA-Z0-9]*(fo?r?ma?t|sty?le?)(e?[ds]?|ing)?\\b)", group = "<!-- 3-4 -->${{ inputs.cat-style }}" },
         
           # 📦 Build/Packaging
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->${{ inputs.cat-build }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(bld|build)\\b", group = "<!-- 11 -->${{ inputs.cat-build }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(📦|:package:|bu?i?ld(s|ing)?\\b)", group = "<!-- 3-5 -->${{ inputs.cat-build }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(📦|:package:|bu?i?ld(s|ing)?\\b)", group = "<!-- 3-5 -->${{ inputs.cat-build }}" },
         
           # 🤖 CI/CD
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->${{ inputs.cat-ci }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(ci|cd)\\b", group = "<!-- 12 -->${{ inputs.cat-ci }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🤖|👷|:construction_worker:|c[id]\\b)", group = "<!-- 3-6 -->${{ inputs.cat-ci }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🤖|👷|:construction_worker:|c[id]\\b)", group = "<!-- 3-6 -->${{ inputs.cat-ci }}" },
         
           # 🧹 Maintenance
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->${{ inputs.cat-chore }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(chr|chore?|clean(up)?|maint[ae]i?n([ae]n?ce)?)\\b", group = "<!-- 13 -->${{ inputs.cat-chore }}" },
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🧹|🙈|💸|:see_no_evil:|:money_with_wings:|(cho?re?|clean(up)?|maint[ae]i?n([ae]n?ce)?|git(hub|ignore|att?ri?b?u?t?e?s?)?)\\b)", group = "<!-- 3-7 -->${{ inputs.cat-chore }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🧹|🙈|💸|:see_no_evil:|:money_with_wings:|(cho?re?|clean(up)?|maint[ae]i?n([ae]n?ce)?|git(hub|ignore|att?ri?b?u?t?e?s?)?)\\b)", group = "<!-- 3-7 -->${{ inputs.cat-chore }}" },
         
-          # Version-related changes - caught BEFORE the catch-all, inserted after
-          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z_0-9-]*(v|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->${{ inputs.cat-version }}" },
-          { message = "(?i)^[^a-zA-Z_0-9-]*(v\\.*[0-9]+|ver(sion)?|bump|release)\\b", group = "<!-- 99 -->${{ inputs.cat-version }}" },
+          # Order-9
+          # Always last
         
-          # Catch-all: everything else (uncategorized commits AND uncategorized PR merges)
-          { message = ".*", group = "<!-- 90 -->🔀 Changes" },
+          # Version-related changes:
+          # Caught BEFORE the catch-all, inserted after
+          { field = "remote.pr_title", pattern = "(?i)^[^a-zA-Z0-9]*?(🔖|🏷️|🏷|:bookmark:|:label:|(v(er)?[^a-zA-Z0-9]*[0-9]+|ver(sion)?|bump|release)\\b)", group = "<!-- 9-2 -->${{ inputs.cat-version }}" },
+          { message = "(?i)^[^a-zA-Z0-9]*?(🔖|🏷️|🏷|:bookmark:|:label:|(v(er)?[^a-zA-Z0-9]*[0-9]+|ver(sion)?|bump|release)\\b)", group = "<!-- 9-2 -->${{ inputs.cat-version }}" },
+        
+          # Catch-all:
+          # Everything else (uncategorized commits / PR merges).
+          # Internal group name is hard-coded, and the actual title is used later in the template, depending on the presence of other (properly classified) categories
+          { message = ".*", group = "<!-- 9-1 -->🔀 Changes" },
         ]
         
         [remote.github]
