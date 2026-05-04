@@ -7,12 +7,13 @@ All input values are passed as env-vars.
 """
 
 import typing as _t
-from typing import Any as _A, Optional as _O, Union as _U
 
 from itertools import chain
 from dataclasses import dataclass, asdict
 import os
 import re
+
+from _shared_just_release_it import *
 
 
 __re_control_char = re.compile(r'[\x00-\x1f\x7f]')
@@ -57,27 +58,6 @@ def toml_repr(string: str, dont_wrap_in_quotes = False) -> str:
 	# do a regex replacement (to \uXXXX):
 	string = __re_control_char.sub(__re_control_char_replacer_for_toml, string)
 	return string if dont_wrap_in_quotes else f'"{string}"'
-
-
-def cleanup_as_single_line(string: str | None) -> str:
-	"""Ensure the given string is a single line one."""
-	if not string:
-		return ''
-	parts = (x.strip() for x in str(string).strip().splitlines())
-	parts = (x for x in parts if x)
-	try:
-		return next(parts)
-	except StopIteration:
-		return ''
-
-
-def is_true_str(str_bool: _O[str]) -> bool:
-	"""Convert GitHub-action's "boolean" string into an actual bool."""
-	str_bool = '' if str_bool is None else str(str_bool)
-	str_bool = str_bool.strip()
-	if not str_bool or str_bool.lower() == 'false':
-		return False
-	return True
 
 
 @dataclass
