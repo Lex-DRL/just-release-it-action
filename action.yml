@@ -194,33 +194,27 @@ runs:
 
     - name: Set version outputs (whether with standardization or not)
       id: version-outputs
-      # To avoid unnecessary python setup, do it in pure bash:
       shell: bash
+      env:
+        switch: ${{ inputs.skip-version-standardize }}
+        force_one_line: true
+        tag_skip: ${{ steps.toml-version.outputs.value }}
+        tag_std: ${{ steps.standard-version.outputs.v }}
+        raw_version_skip: ${{ steps.toml-version.outputs.value }}
+        raw_version_std: ${{ steps.standard-version.outputs.full }}
+        is_pre_skip: ''
+        is_pre_std: ${{ steps.standard-version.outputs.is-pre }}
+        force_pre: ${{ inputs.is-pre-release }}
       run: |
-        if [ -z '${{ inputs.skip-version-standardize }}' ] || [ '${{ inputs.skip-version-standardize }}' = 'false' ]; then
-          echo 'tag=${{ steps.standard-version.outputs.v }}' >> "$GITHUB_OUTPUT"
-          echo 'raw_version=${{ steps.standard-version.outputs.full }}' >> "$GITHUB_OUTPUT"
-          if [ -z '${{ inputs.is-pre-release }}' ]; then
-            echo 'is_pre=${{ steps.standard-version.outputs.is-pre }}' >> "$GITHUB_OUTPUT"
-          elif [ '${{ inputs.is-pre-release }}' = 'false' ]; then
-            echo 'is_pre=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'is_pre=true' >> "$GITHUB_OUTPUT"
-          fi
-        else
-          echo 'tag=${{ steps.toml-version.outputs.value }}' >> "$GITHUB_OUTPUT"
-          echo 'raw_version=${{ steps.toml-version.outputs.value }}' >> "$GITHUB_OUTPUT"
-          if [ -z '${{ inputs.is-pre-release }}' ] || [ '${{ inputs.is-pre-release }}' = 'false' ]; then
-            echo 'is_pre=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'is_pre=true' >> "$GITHUB_OUTPUT"
-          fi
-        fi
+        # Set version outputs (whether with standardization or not)
+        python '${{ github.action_path }}/switch-version-outputs.py'
 
     - name: ⤏ Detect internal commits (from merged branch) to skip
       id: skip-commits
+      # Kept as bash: safe - doesn't use any input values
       shell: bash
       run: |
+        # ⤏ Detect internal commits (from merged branch) to skip
         # Find the previous tag (falls back to very first commit if none exists)
         PREV_TAG=$(
           git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null || \
@@ -252,7 +246,7 @@ runs:
         BRANCH_COUNT=$(echo "$BRANCH" | grep -c . 2>/dev/null || echo 0)
         echo "Skipping ${BRANCH_COUNT} branch-internal commit(s)"
 
-    - name: Prepare default git-cliff configuration
+    - name: Prepare bundled git-cliff configuration
       if: inputs.cliff-config-file == ''
       shell: bash
       env:
@@ -278,7 +272,9 @@ runs:
         github_owner: ${{ github.repository_owner }}
         github_repo: ${{ github.event.repository.name }}
         out_config_file: "${{ runner.temp }}/cliff.just-release-it.toml"
-      run: python '${{ github.action_path }}/prepare-cliff-config.py'
+      run: |
+        # Prepare bundled git-cliff configuration
+        python '${{ github.action_path }}/prepare-cliff-config.py'
 
     - name: 📝 Build changelog with git-cliff ⛰️
       id: build-changelog
