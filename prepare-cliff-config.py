@@ -206,21 +206,34 @@ class ConfigGenerator:
 			self.__format_single_group_parsers(
 				'1-1', self.cat_breaking,
 				custom_pre_format=["""
-# 1. Conventional breaking commits (feat!, fix!, BREAKING CHANGE footer) — native `cliff` field:
+# 0. Conventional breaking commits (feat!, fix!, BREAKING CHANGE footer) — native `git-cliff` field:
 {{ breaking = true, group = {gr} }},
-# 2. PR titles starting with "breaking" or the same "prefix!" pattern:
+# 1. PR titles / regular commit messages, which:
+# - start with "breaking"
+# - or with a dedicated emoji
+# - or the same "any_prefix!:" pattern (or with "prefix(smth)!:")
+# - ... that might be wrapped into some special characters - like "`prefix`:"
 				""".strip()],
 				general_re=[re.compile(
 					r'('
 					r'💥|❗|❕|‼️|‼|:boom:'
-					r'|[a-zA-Z_]+(\([a-zA-Z_0-9-]+\))?!\s*:'
+					# "cat!:", "`cat!`:", "[cat!]:", "cat(smth)!:", ...
+					r'|[a-zA-Z_]+[^a-zA-Z0-9]*?(\([a-zA-Z_0-9-]+\))?!'
+					r'[^a-zA-Z0-9]*?:'
 					r'|break(s|ing)?\b'
 					r')'
-					r'|BREAK(S|ING)(\s+CHANGES?)?\s*:\s*$'
 				).pattern],
-				custom_post_format=["""
-# 3. Plain ^ commit messages with the same start
-				""".strip()],
+				custom_post_format=[
+					"""
+# 2. Catch "BREAKING:" / "BREAKING CHANGES:" in the message body.
+# `git-cliff` gets crazy on attempt to combine a regex with "^" alignment
+# and without - so, a separate parser:
+{{  message = {re}, group = {gr} }},
+					""".strip().replace('{re}', toml_repr(re.compile(
+						r'(?i)\bbreak(s|ing)?(\s+changes?)?[^a-zA-Z0-9]*?:'
+					).pattern))
+					+ '\n'
+				],
 			),
 			self.__format_single_group_parsers(
 				'1-2', self.cat_depr, [re.compile(
@@ -421,9 +434,15 @@ class ConfigGenerator:
 filter_unconventional = false
 sort_commits = "oldest"
 topo_order_commits = true
+
+# We do our own regex-based grouping anyway,
+# so let's preserve "del:", "ren:" and alike:
+conventional_commits = false
+
 protect_breaking_commits = true
-# This ^ prevents commits with `breaking = true` from being suppressed by any `{ ..., skip = true }` parser.
-# Skips aren't used in this template yet, but let's have it just as a fail-safe for the future.
+# This ^ prevents commits with `breaking = true`
+# from being suppressed by any `{ ..., skip = true }` parser.
+# Skips aren't used in this template yet, but just to be safe.
 		""".strip().splitlines()
 		return chain(
 			lines,
