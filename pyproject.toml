@@ -1,0 +1,7 @@
+[project]
+version = "0.1a"
+authors = [
+  {name = "Lex Darlog"}
+]
+license = {file = "LICENSE.md"}
+readme = "README.md"
