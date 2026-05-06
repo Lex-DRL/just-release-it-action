@@ -469,55 +469,81 @@ trim = true
 header = ""
 footer = ""
 body = """
-{%- set grouped = commits | group_by(attribute="group") -%}
-{%- set has_specific = false -%}
+{#- Pre-cleanup distinct group names used in later comparisons: -#}
+{%- set_global cat_other_internal = "🔀 Changes" | striptags | trim | upper_first -%}
+{%- set_global cat_other_multi = "${{ inputs.cat-unclassified-multi }}" | striptags | trim | upper_first -%}
+{%- set_global cat_other_only = "${{ inputs.cat-unclassified-only }}" | striptags | trim | upper_first -%}
+{%- set_global cat_version = "${{ inputs.cat-version }}" | striptags | trim | upper_first -%}
+
+{%- set_global cat_breaking = "${{ inputs.cat-breaking }}" | striptags | trim | upper_first -%}
+{%- set_global cat_revert = "${{ inputs.cat-revert }}" | striptags | trim | upper_first -%}
+{%- set_global cat_depr = "${{ inputs.cat-depr }}" | striptags | trim | upper_first -%}
+
+{#- Detect if we have any properly classified groups: -#}
+{%- set_global grouped = commits | group_by(attribute="group") -%}
+{%- set_global has_specific = false -%}
 {%- for g, gc in grouped -%}
   {%- set dg = g | striptags | trim | upper_first -%}
-  {%- if dg != "🔀 Changes" and dg != "${{ inputs.cat-version }}" -%}
+  {%- if dg != cat_other_internal and dg != cat_version -%}
     {%- set_global has_specific = true -%}
   {%- endif -%}
 {%- endfor -%}
+
+{#- The actual loop over groups: -#}
 {%- for group, commits in grouped -%}
-{%- set display_group = group | striptags | trim | upper_first -%}
-{%- set_global alert_type = "" -%}
-{%- set_global alert_indent = "" -%}${{ PUT_ALERT_TEMPLATE_LINES_HERE }}
-{% if display_group == "🔀 Changes" -%}
-  {%- if has_specific -%}
-  {{ alert_indent }}## ${{ inputs.cat-unclassified-multi }}
-  {%- else -%}
-  {{ alert_indent }}## ${{ inputs.cat-unclassified-only }}
+  {%- set_global display_group = group | striptags | trim | upper_first -%}
+  {%- set_global alert_type = "" -%}
+  {%- set_global alert_indent = "" -%}${{ PUT_ALERT_TEMPLATE_LINES_HERE }}
+  {%- if display_group == cat_other_internal -%}
+    {#- For the uncategorized changes, override the cat title: -#}
+    {%- if has_specific -%}
+      {%- set_global display_group = cat_other_multi -%}
+    {%- else -%}
+      {%- set_global display_group = cat_other_only -%}
+    {%- endif -%}
   {%- endif -%}
-{% else -%}
-  {{ alert_indent }}## {{ display_group }}
-{%- endif %}
-{{ alert_indent }}
-{% for commit in commits %}
-{%- set msg = commit.message | trim -%}
-{%- set title = msg | split(pat="\n") | first | trim -%}
-{%- set cbody = msg | split(pat="\n") | slice(start=1) | join(sep="\n") | trim -%}
-{%- set sha7 = commit.id | truncate(length=7, end="") -%}
-{%- set who = commit.remote.username | default(value=commit.author.name) -%}
-{{ alert_indent }}- {% if commit.remote.pr_number -%}
-{{ commit.remote.pr_title | default(value=title) }} — #{{ commit.remote.pr_number }} by @{{ who }}
-{%- else -%}
-{{ title }} — {{ commit.id }} by @{{ who }}
-{%- if cbody %}
-{{ alert_indent ~ "  > " ~ cbody | replace(from="\n", to="\n" ~ alert_indent ~ "  > ") }}
-{%- endif %}
-{%- endif %}
-{% endfor %}
-{% endfor %}
+  {#- Output the category title: -#}
+{{ alert_indent }}## {{ display_group }}
+{{ alert_indent ~ "\n" -}}
+  {%- for commit in commits -%}
+    {%- set msg = commit.message | trim -%}
+    {%- set title = msg | split(pat="\n") | first | trim -%}
+    {%- set_global commit_body = msg | split(pat="\n") | slice(start=1) | join(sep="\n") | trim -%}
+    {%- if not commit_body -%}
+      {#- For merge-commits, git-cliff pre-splits the message -#}
+      {#- to the actual title and the body, BUT ONLY IF -#}
+      {#- Conventional Commits parsing is enabled. -#}
+      {#- We disable it. But just in case... -#}
+      {%- set_global commit_body = commit.body | default(value="") | trim -%}
+    {%- endif -%}
+    {%- set sha7 = commit.id | truncate(length=7, end="") -%}
+    {%- set who = commit.remote.username | default(value=commit.author.name) -%}
+    {%- if commit.remote.pr_number -%}
+      {#- List item when it's a PR: -#}
+{{ alert_indent }}- {{ commit.remote.pr_title | default(value=title) }} — #{{ commit.remote.pr_number }} by @{{ who ~ "\n" }}
+    {%- else -%}
+      {#- List item when it's a regular commit: -#}
+{{ alert_indent }}- {{ title }} — {{ commit.id }} by @{{ who ~ "\n" }}
+      {#- If message is multiline, also attach the remaining lines under -#}
+      {#- the list item, indenting it and putting into a quote: -#}
+      {%- if commit_body and display_group != cat_revert -%}
+        {%- set indented_body_under_list = "  > " ~ commit_body | replace(from="\n", to="\n" ~ alert_indent ~ "  > ") -%}
+{{ alert_indent ~ indented_body_under_list ~ "\n" }}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor %}{# Non-stripped newline here - after the whole section #}
+{% endfor -%}
 """
 		'''.strip()
 
-		alert_template_lines = '\n' + r"""
-{%- if display_group == "${{ inputs.cat-breaking }}" -%}
+		alert_lines_str = '\n' + r"""
+{%- if display_group == cat_breaking -%}
   {%- set_global alert_type = "CAUTION" -%}
   {%- set_global alert_indent = "> " -%}
-{%- elif display_group == "${{ inputs.cat-depr }}" -%}
+{%- elif display_group == cat_depr -%}
   {%- set_global alert_type = "WARNING" -%}
   {%- set_global alert_indent = "> " -%}
-{%- elif display_group == "${{ inputs.cat-revert }}" -%}
+{%- elif display_group == cat_revert -%}
   {%- set_global alert_type = "IMPORTANT" -%}
   {%- set_global alert_indent = "> " -%}
 {%- endif -%}
@@ -525,10 +551,11 @@ body = """
 > [!{{ alert_type }}]
 {% endif -%}
 		""".strip()
-		if not self.cat_alert_blocks:
-			alert_template_lines = ''
 
-		lines_str = lines_str.replace('${{ PUT_ALERT_TEMPLATE_LINES_HERE }}', alert_template_lines)
+		lines_str = lines_str.replace(
+			'${{ PUT_ALERT_TEMPLATE_LINES_HERE }}',
+			alert_lines_str if self.cat_alert_blocks else ''
+		)
 
 		# Since the template itself contains A TON of curly braces,
 		# let's put the values with simple replace instead of format:
