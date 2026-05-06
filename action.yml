@@ -177,6 +177,7 @@ runs:
         tag_name: ${{ steps.version-outputs.outputs.tag }}
         name: ${{ steps.version-outputs.outputs.tag }}
         body: ${{ steps.build-changelog.outputs.content }}
+        target_commitish: ${{ github.sha }}
         files: ${{ inputs.attach-files }}
         draft: ${{ inputs.is-draft }}
         prerelease: ${{ steps.version-outputs.outputs.is_pre }}
