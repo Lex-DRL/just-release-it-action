@@ -2,8 +2,13 @@
   
 # Just release it! (from TOML) 📦 Action
 
+[![GitHub Release][github-release-shield]][github-release-url]
+
+[github-release-shield]: https://img.shields.io/github/v/release/Lex-DRL/just-release-it-action?logo=github
+[github-release-url]: https://github.com/Lex-DRL/just-release-it-action/releases/latest
+
 *Easiest-to-setup GitHub release for python projects:<br />
-just read version from `pyproject.toml`, build changelog and release it!*<br />
+just read version from `pyproject.toml`, build changelog and release it!*
 </div>
 
 Originally created to assist with releasing custom nodes for [ComfyUI](https://github.com/Comfy-Org/ComfyUI), but can be used for any python packages that rely on `pyproject.toml` for build/publishing.
