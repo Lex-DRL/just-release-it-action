@@ -22,7 +22,7 @@ import os
 import sys
 import uuid
 
-from _shared_just_release_it import *
+from _shared_utils import _cleanup_as_single_line, _is_true_str
 
 
 class OutputsTuple(_t.NamedTuple):
@@ -107,7 +107,7 @@ def _dummy_f(val):
 def _parse_triplet_args_gen(args: _t.Iterator[str], force_one_line=True) -> _t.Generator[OutputsTuple, _A, None]:
 	"""Process replacement args sequence into valid ``OutputsTuple`` sequence."""
 	triplets = zip_longest(args, args, args, fillvalue=None)
-	cleanup = cleanup_as_single_line if force_one_line else _dummy_f
+	cleanup = _cleanup_as_single_line if force_one_line else _dummy_f
 	for out_name, true_name, false_name in triplets:
 		if true_name is None or false_name is None:
 			raise RuntimeError(
@@ -139,12 +139,12 @@ def switcher_parse_args(*args: str):
 	switcher_str = os.environ.get(switcher_name)
 	if switcher_str is None:
 		raise RuntimeError(f"Switcher env-var ({switcher_name!r}) isn't set")
-	switcher_bool = is_true_str(switcher_str)
+	switcher_bool = _is_true_str(switcher_str)
 
 	is_oneliner_str = os.environ.get(is_oneliner_name)
 	if is_oneliner_name is None:
 		raise RuntimeError(f"Switcher env-var ({is_oneliner_name!r}) isn't set")
-	is_oneliner_bool = is_true_str(is_oneliner_str)
+	is_oneliner_bool = _is_true_str(is_oneliner_str)
 
 	triplets = list(_parse_triplet_args_gen(args, force_one_line=is_oneliner_bool))
 

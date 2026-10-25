@@ -3,6 +3,7 @@
 """
 """
 
+from _shared_utils import _is_true_str
 from switch_outputs import *
 
 
@@ -27,7 +28,7 @@ def version_main(github_output_env: str = 'GITHUB_OUTPUT', ) -> None:
 
 	force_pre_str = get_env_var('force_pre', 'a force-pre-release env-var')
 	if force_pre_str or switcher:
-		triplets = _enforce_pre_release(is_true_str(force_pre_str), triplets)
+		triplets = _enforce_pre_release(_is_true_str(force_pre_str), triplets)
 
 	set_out_values(
 		switcher, *triplets,

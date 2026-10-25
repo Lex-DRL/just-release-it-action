@@ -5,7 +5,7 @@ import typing as _t
 from typing import Any as _A, Optional as _O, Union as _U
 
 
-def cleanup_as_single_line(string: str | None) -> str:
+def _cleanup_as_single_line(string: str | None) -> str:
 	"""Ensure the given string is a single line one."""
 	if not string:
 		return ''
@@ -17,7 +17,7 @@ def cleanup_as_single_line(string: str | None) -> str:
 		return ''
 
 
-def is_true_str(str_bool: _O[str]) -> bool:
+def _is_true_str(str_bool: _O[str]) -> bool:
 	"""Convert GitHub-action's "boolean" string into an actual bool."""
 	str_bool = '' if str_bool is None else str(str_bool)
 	str_bool = str_bool.strip()

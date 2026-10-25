@@ -13,7 +13,7 @@ from dataclasses import dataclass, asdict
 import os
 import re
 
-from _shared_just_release_it import *
+from _shared_utils import _cleanup_as_single_line, _is_true_str
 
 
 __re_control_char = re.compile(r'[\x00-\x1f\x7f]')
@@ -116,8 +116,8 @@ class ConfigGenerator:
 		:param custom_post_format: Custom lines format-string, added AFTER other parsers.
 		:return:
 		"""
-		order = cleanup_as_single_line(order)
-		group = cleanup_as_single_line(group)
+		order = _cleanup_as_single_line(order)
+		group = _cleanup_as_single_line(group)
 		gr_repr = toml_repr(f'<!-- {order} -->{group}')
 		re_prefix_toml = toml_repr(re_prefix, dont_wrap_in_quotes=True)
 
@@ -579,7 +579,7 @@ def main(fallback_out_file='cliff.just-release-it.toml') -> None:
 	# rather than as script args.
 	# So, retrieve them:
 	kwargs = {
-		nm: cleanup_as_single_line(os.environ.get(nm)) for nm in [
+		nm: _cleanup_as_single_line(os.environ.get(nm)) for nm in [
 			'cat_alert_blocks',
 
 			'cat_breaking',
@@ -613,7 +613,7 @@ def main(fallback_out_file='cliff.just-release-it.toml') -> None:
 		cat_alert_blocks_str = kwargs.pop('cat_alert_blocks')
 	except KeyError:
 		cat_alert_blocks_str = str(ConfigGenerator.cat_alert_blocks)
-	cat_alert_blocks_bool = is_true_str(cat_alert_blocks_str)
+	cat_alert_blocks_bool = _is_true_str(cat_alert_blocks_str)
 
 	# Now, filer out any unset strings to fall back to defaults:
 	kwargs = {k: v for k, v in kwargs.items() if v}
@@ -625,7 +625,7 @@ def main(fallback_out_file='cliff.just-release-it.toml') -> None:
 	try:
 		out_config_file = kwargs.pop('out_config_file')
 	except KeyError:
-		out_config_file = cleanup_as_single_line(fallback_out_file)
+		out_config_file = _cleanup_as_single_line(fallback_out_file)
 
 	config_lines = ConfigGenerator(**kwargs).lines()
 
