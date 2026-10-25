@@ -8,15 +8,14 @@ All input values are passed as env-vars.
 
 import typing as _t
 
-from itertools import chain
-from dataclasses import dataclass, asdict
-import os
-import re
+from itertools import chain as _chain
+from dataclasses import dataclass as _dataclass, asdict as _asdict, fields as _fields
+import re as _re
 
-from _shared_utils import _cleanup_as_single_line, _is_true_str
+from _shared_utils import _cleanup_as_single_line, _is_true_str, _EnvInputsABC, _get_env_var
 
 
-__re_control_char = re.compile(r'[\x00-\x1f\x7f]')
+__re_control_char = _re.compile(r'[\x00-\x1f\x7f]')
 # \x00–\x1f (0–31):
 # The first 32 codepoints are all control characters -
 # non-printable characters defined in the original ASCII standard.
@@ -34,7 +33,7 @@ __re_control_char = re.compile(r'[\x00-\x1f\x7f]')
 # sitting just above the printable block instead.
 
 
-def __re_control_char_replacer_for_toml(match: re.Match) -> str:
+def __re_control_char_replacer_for_toml(match: _re.Match) -> str:
 	"""Converts single control-character-match to TOML format."""
 	codepoint = ord(match.group())
 	return f'\\u{codepoint:04x}'
@@ -60,7 +59,7 @@ def toml_repr(string: str, dont_wrap_in_quotes = False) -> str:
 	return string if dont_wrap_in_quotes else f'"{string}"'
 
 
-@dataclass
+@_dataclass
 class ConfigGenerator:
 	cat_alert_blocks: bool = True
 
@@ -96,7 +95,7 @@ class ConfigGenerator:
 		custom_post_format: _t.Sequence[str] = tuple(),
 		pr_format: str = '{{ field = "remote.pr_title", pattern = {re}, group = {gr} }},',
 		commit_format: str = '{{ message = {re}, group = {gr} }},',
-		re_prefix: str  = re.compile(r'(?i)^[^a-zA-Z0-9]*?').pattern,
+		re_prefix: str  = _re.compile(r'(?i)^[^a-zA-Z0-9]*?').pattern,
 		custom_header_comment: str = '',
 		add_leading_empty_line: bool = True,
 	) -> _t.Iterable[str]:
@@ -163,14 +162,14 @@ class ConfigGenerator:
 		if not add_leading_empty_line:
 			header = header[1:]
 
-		return chain(
+		return _chain(
 			header, pre_lines, pr_lines, commit_lines, post_lines
 		)
 
 	def __format_git_commit_parsers(self) -> _t.Iterable[str]:
-		# `re.compile` used here only for syntax highlighting in IDE.
+		# `_re.compile` used here only for syntax highlighting in IDE.
 		# The actual regex syntax is for Rust.
-		parser_lines = chain(
+		parser_lines = _chain(
 			"""
 # Each category: PR-title field match first, then commit message match.
 # Field matches only fire when remote.pr_title is set (i.e., actual PR merges),
@@ -197,7 +196,7 @@ class ConfigGenerator:
 # - or the same "any_prefix!:" pattern (or with "prefix(smth)!:")
 # - ... that might be wrapped into some special characters - like "`prefix`:"
 				""".strip()],
-				general_re=[re.compile(
+				general_re=[_re.compile(
 					r'('
 					r'💥|❗|❕|‼️|‼|:boom:'
 					# "cat!:", "`cat!`:", "[cat!]:", "cat(smth)!:", ...
@@ -212,14 +211,14 @@ class ConfigGenerator:
 # `git-cliff` gets crazy on attempt to combine a regex with "^" alignment
 # and without - so, a separate parser:
 {{  message = {re}, group = {gr} }},
-					""".strip().replace('{re}', toml_repr(re.compile(
+					""".strip().replace('{re}', toml_repr(_re.compile(
 						r'(?i)\bbreak(s|ing)?(\s+changes?)?[^a-zA-Z0-9]*?:'
 					).pattern))
 					+ '\n'
 				],
 			),
 			self.__format_single_group_parsers(
-				'1-2', self.cat_depr, [re.compile(
+				'1-2', self.cat_depr, [_re.compile(
 					# r'🗑️'
 					r'⚠️|⚠'
 					r'|('
@@ -228,7 +227,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'1-3', self.cat_revert, [re.compile(
+				'1-3', self.cat_revert, [_re.compile(
 					r'('
 					r'↩️|↩|↶|🔙|⏪️|⏪|:rewind:'
 					r'|(revert|undo|(rl|roll)\s*(bk|back)s?)\b'
@@ -242,7 +241,7 @@ class ConfigGenerator:
 			""".rstrip().splitlines(),
 
 			self.__format_single_group_parsers(
-				'2-1', self.cat_feat, [re.compile(
+				'2-1', self.cat_feat, [_re.compile(
 					r'('
 					r'✨|🌟|⭐|🎉|:sparkles:|:tada:'
 					r'|new[^a-zA-Z0-9]*?(\([a-zA-Z_0-9-]+\))?[^a-zA-Z0-9]*?:'  # only the explicit `new:`
@@ -251,7 +250,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'2-2', self.cat_enhance, [re.compile(
+				'2-2', self.cat_enhance, [_re.compile(
 					r'('
 					r'🚀|🚩|🚸|♿️'
 					r'|:rocket:|:triangular_flag_on_post:'
@@ -266,7 +265,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'2-3', self.cat_fix, [re.compile(
+				'2-3', self.cat_fix, [_re.compile(
 					r'('
 					r'🛠️|🛠|🐛|🩹|🚑️|🚑|🚨|🥅'
 					r'|:bug:|:adhesive_bandage:|:ambulance:'
@@ -276,7 +275,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'2-4', self.cat_perf, [re.compile(
+				'2-4', self.cat_perf, [_re.compile(
 					r'('
 					r'⚡️|⚡|:zap:'
 					r'|pe?rf(ormance)?\b'
@@ -284,7 +283,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'2-5', self.cat_security, [re.compile(
+				'2-5', self.cat_security, [_re.compile(
 					r'('
 					r'🔒|🔐|🛡️|🛡|:lock:|:closed_lock_with_key:'
 					r'|sec(urity)?\b'
@@ -298,7 +297,7 @@ class ConfigGenerator:
 			""".rstrip().splitlines(),
 
 			self.__format_single_group_parsers(
-				'3-1', self.cat_doc, [re.compile(
+				'3-1', self.cat_doc, [_re.compile(
 					r'('
 					r'📝|📄|💬|:memo:|:page_facing_up:|:speech_balloon:'
 					r'|(doc(ument)?(e?[ds]?|ing|ation)?|readme)\b'
@@ -306,7 +305,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-2', self.cat_refactor, [re.compile(
+				'3-2', self.cat_refactor, [_re.compile(
 					r'('
 					r'♻️|♻|🚚|:recycle:|:truck:'
 					r'|('
@@ -318,7 +317,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-3', self.cat_test, [re.compile(
+				'3-3', self.cat_test, [_re.compile(
 					r'('
 					r'🔬|🧪|⚗️|✅|🦺'
 					r'|:test_tube:|:alembic:'
@@ -328,7 +327,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-4', self.cat_style, [re.compile(
+				'3-4', self.cat_style, [_re.compile(
 					r'('
 					r'🎨|:art:'
 					r'|(cd|code)?[^a-zA-Z0-9]*(fo?r?ma?tt?|sty?le?)(e?[ds]?|ing)?\b'
@@ -336,7 +335,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-5', self.cat_build, [re.compile(
+				'3-5', self.cat_build, [_re.compile(
 					r'('
 					r'📦|:package:'
 					r'|pyproject|setup\.|requirements\.'
@@ -345,7 +344,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-6', self.cat_ci, [re.compile(
+				'3-6', self.cat_ci, [_re.compile(
 					r'('
 					r'🤖|👷|:construction_worker:'
 					r'|c[id]\b'
@@ -353,7 +352,7 @@ class ConfigGenerator:
 				).pattern],
 			),
 			self.__format_single_group_parsers(
-				'3-7', self.cat_chore, [re.compile(
+				'3-7', self.cat_chore, [_re.compile(
 					r'('
 					r'🧹|🙈|💸|:see_no_evil:|:money_with_wings:'
 					r'|('
@@ -371,7 +370,7 @@ class ConfigGenerator:
 			""".rstrip().splitlines(),
 
 			self.__format_single_group_parsers(
-				'9-2', self.cat_version, [re.compile(
+				'9-2', self.cat_version, [_re.compile(
 					r'('
 					r'🔖|🏷️|🏷|:bookmark:|:label:'
 					r'|('
@@ -402,7 +401,7 @@ class ConfigGenerator:
 		)
 
 		indent = '  '
-		return chain(
+		return _chain(
 			('commit_parsers = [', ),
 			(
 				'' if not ln.strip() else f'{indent}{ln}'
@@ -427,7 +426,7 @@ protect_breaking_commits = true
 # from being suppressed by any `{ ..., skip = true }` parser.
 # Skips aren't used in this template yet, but just to be safe.
 		""".strip().splitlines()
-		return chain(
+		return _chain(
 			lines,
 			[''],
 			self.__format_git_commit_parsers(),
@@ -540,7 +539,7 @@ body = """
 		# Since the template itself contains A TON of curly braces,
 		# let's put the values with simple replace instead of format:
 		# noinspection PyTypeChecker
-		instance_dict = asdict(self)
+		instance_dict = _asdict(self)
 		for attr_name, value in instance_dict.items():
 			github_input = attr_name.replace('_', '-')
 			github_expr = '${{ inputs.' + github_input + ' }}'
@@ -561,7 +560,7 @@ body = """
 		for sec in sec_iter:
 			new_sections.append(iter(sep))  # new iterator each time
 			new_sections.append(sec)
-		return chain(*new_sections)
+		return _chain(*new_sections)
 
 	def lines(self) -> list[str]:
 		"""The code of generated config as list of lines (``\\n`` in the end)."""
@@ -573,61 +572,65 @@ body = """
 		))
 
 
+@_dataclass
+class EnvInputs(_EnvInputsABC):
+	"""Script 'arguments' passed as env-vars (for security reasons)."""
+	cat_alert_blocks: bool
+
+	cat_breaking: str
+	cat_depr: str
+	cat_revert: str
+	cat_feat: str
+	cat_enhance: str
+	cat_fix: str
+	cat_perf: str
+	cat_security: str
+	cat_doc: str
+	cat_refactor: str
+	cat_test: str
+	cat_style: str
+	cat_build: str
+	cat_ci: str
+	cat_chore: str
+	cat_version: str
+	cat_unclassified_multi: str
+	cat_unclassified_only: str
+
+	github_owner: str
+	github_repo: str
+
+	out_config_file: str
+
+	def __post_init__(self):
+		# All the passed args except for `cat_alert_blocks` must be single-line strings:
+		skipped = {'cat_alert_blocks', }
+		for field in _fields(self):
+			name = field.name
+			if name in skipped:
+				continue
+			value = getattr(self, name)
+			value = _cleanup_as_single_line(value)
+			setattr(self, name, value)
+
+
 def main(fallback_out_file='cliff.just-release-it.toml') -> None:
-	# To protect from bash code-injection attacks in GitHub action,
-	# it's MUCH safer to pass all the necessary values as env-vars,
-	# rather than as script args.
-	# So, retrieve them:
-	kwargs = {
-		nm: _cleanup_as_single_line(os.environ.get(nm)) for nm in [
-			'cat_alert_blocks',
+	env_args = EnvInputs.from_env()
+	env_args.print()
 
-			'cat_breaking',
-			'cat_depr',
-			'cat_revert',
-			'cat_feat',
-			'cat_enhance',
-			'cat_fix',
-			'cat_perf',
-			'cat_security',
-			'cat_doc',
-			'cat_refactor',
-			'cat_test',
-			'cat_style',
-			'cat_build',
-			'cat_ci',
-			'cat_chore',
-			'cat_version',
-			'cat_unclassified_multi',
-			'cat_unclassified_only',
+	kwargs_to_config_gen = _asdict(env_args)
 
-			'github_owner',
-			'github_repo',
+	out_config_file = kwargs_to_config_gen.pop('out_config_file')
+	if not out_config_file:
+		out_config_file = _cleanup_as_single_line(fallback_out_file)
+		print(f"⚠ No config file specified, default name used: {out_config_file!r}")
 
-			'out_config_file',
-		]
+	# Filter out the missing ones:
+	kwargs_to_config_gen = {
+		k: v for k, v in kwargs_to_config_gen.items()
+		if v or isinstance(v, bool)
 	}
 
-	# String-boolean values have to be processed before filtering out:
-	try:
-		cat_alert_blocks_str = kwargs.pop('cat_alert_blocks')
-	except KeyError:
-		cat_alert_blocks_str = str(ConfigGenerator.cat_alert_blocks)
-	cat_alert_blocks_bool = _is_true_str(cat_alert_blocks_str)
-
-	# Now, filer out any unset strings to fall back to defaults:
-	kwargs = {k: v for k, v in kwargs.items() if v}
-
-	# ... and restore the actual bool values:
-	# noinspection PyTypeChecker
-	kwargs['cat_alert_blocks'] = cat_alert_blocks_bool
-
-	try:
-		out_config_file = kwargs.pop('out_config_file')
-	except KeyError:
-		out_config_file = _cleanup_as_single_line(fallback_out_file)
-
-	config_lines = ConfigGenerator(**kwargs).lines()
+	config_lines = ConfigGenerator(**kwargs_to_config_gen).lines()
 
 	with open(out_config_file, 'wt', encoding='utf-8') as f:
 		f.writelines(f'{ln}\n' for ln in config_lines)
