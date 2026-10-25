@@ -19,11 +19,12 @@ An example of generated release: https://github.com/Lex-DRL/test-ComfyUI-dummy/r
 
 ## Just set it up!
 
-**ULTRA-TL;DR**:
-- Just use the action in your GitHub workflow.
-- It should "just work" for a usual solo-dev project.
+> [!NOTE]
+> ### ULTRA-TL;DR
+> - Just use the action in your GitHub workflow.
+> - Even with no configuration, it should "just work" as long as you have version in `pyproject.toml`, and at least somewhat-organized commit history.
 
-TL;DR:
+### TL;DR
 - Have a `pyproject.toml` file in the repo root.
 - Make sure it contains the `version` field under the main `[project]` section:
   ```toml
@@ -31,14 +32,14 @@ TL;DR:
   # ...
   version = "1.2.3"
   ```
-- Create a GitHub workflow file under `.github\workflows\` - name it something like `release.yml`.
+- Create a GitHub workflow file under `.github\workflows\` - name it something like `just-release-it.yml`.
 - Put the following code inside it (replace `main` with your default branch, if it has a different name):
   <details>
-  <summary>Workflow code</summary>
+  <summary>▶️ Minimal workflow code ◀️</summary>
 
   ```yaml
   name: Release
-  
+
   on:
     push:
       branches:
@@ -46,17 +47,20 @@ TL;DR:
       paths:
         - "pyproject.toml"
     workflow_dispatch:  # Allows to manually run the workflow, too
-  
-  permissions:
-    contents: write  # Necessary to publish a release
-  
+
   jobs:
     publish-release:
-      name: Publish a release
+      name: >-
+        📦 Publish release
       runs-on: ubuntu-latest
+      timeout-minutes: 5  # Prevent stuck jobs
+
+      permissions:
+        contents: write  # Necessary to publish a release
+
       steps:
         - name: ♻️ Check out code
-          uses: actions/checkout@v6
+          uses: actions/checkout@v7
           with:
             fetch-depth: 0  # Critical for changelog + first-release support
   
@@ -65,8 +69,9 @@ TL;DR:
           uses: Lex-DRL/just-release-it-action@v1
   ```
   </details>
+- `📦 Just release it!` itself is [released](https://github.com/Lex-DRL/just-release-it-action/releases) with itself... yeah, a little recursion here. So, to have a more production-like example, check [its own release workflow](https://github.com/Lex-DRL/just-release-it-action/blob/main/.github/workflows/just-release-it.yml).
 - The `📦 Just release it!` action doesn't require any extra configuration, unless you want to override defaults... which are already good enough for most repos.
-- Make sure you have a release or a tag **on GitHub** for the latest previous version, and it is made on the right commit. Create at least the tag if you don't have any yet (i.e., if you were releasing directly to a package registry). Name it like `v1.2.3` / just `1.2.3` (with your version, obviously).
+- Lastly, make sure you have a release or a tag **on GitHub** for the latest previous version, and it's made on the right commit. Create at least the tag if you don't have any yet (i.e., if you were releasing directly to a package registry). Name it like `v1.2.3` / just `1.2.3` (with your version, obviously).
   - If you don't do so, your first release published with `📦 Just release it!` will contain **THE ENTIRE GIT HISTORY** as the changelog.
 
 ## What does it do, specifically?
@@ -123,91 +128,112 @@ Listed in the order of priority:
 | `Version` | 🔖 🏷️ 🏷 | `ver` `version` `bump` `release` | `v1...`, `v2...`, `ver3...` with any numbers |
 | `🔀 Other changes` / `⚙️ What's changed` | - | - | All other commits |
 
-## Action inputs / overrides / HowTos
+## Configuration
 
-By default, the action is configured to "just work" out of the box in the most general case, no extra configuration required. However, you can override defaults using the `with:` statement in your workflow:
+Below is a snippet with all the configurable settings and their default values when omitted (all of them could be).
+
+> [!NOTE]
+> For boolean-like options:
+> - Empty string (`''`) and `'false'` are treated as `false`.
+> - Anything else means `true`.
 
 ```yaml
-        - name: "📦 Just release it!"
-          id: just-release-it
-          uses: Lex-DRL/just-release-it-action@v1
-          with:
-            cat-breaking: '‼️ BREAKS ‼️'
+# ...
+
+jobs:
+  publish-release:
+    # ...
+    steps:
+    # ...
+    
+    - name: "📦 Just release it!"
+      id: just-release-it
+      uses: Lex-DRL/just-release-it-action@v1
+      with:
+        project-toml-file: 'pyproject.toml' # Path to the TOML file in your repo to extract version from.
+        attach-files: '' # Glob of files to attach (e.g. "dist/*").
+        # Leave empty/unset for source-only release.
+        # As an example config for PyPI build+release (with wheel), see:
+        # https://github.com/Lex-DRL/typing-clean/blob/main/.github/workflows/just-release-it.yml
+        
+        # PYTHON SETUP
+        # Internally, the action uses python, so it sets it up first
+        skip-python-setup: false # Set to 'true' if it's already set up before by any of the previous steps
+        python-version: '3.x' # Which python version to install
+        
+        # VERSION STANDARDIZATION
+        # Normally, the extracted version is standardized for the release title/tag.
+        # See: https://github.com/Lex-DRL/standardize-version-action
+        skip-version-standardize: false # Set to 'true' to disable it
+        
+        # RELEASE TOGGLES
+        is-pre-release: '' # Override pre-release status:
+        # - '': let the version-standardizing step to decide (or 'false' if this step is skipped)
+        # - 'false': force regular release
+        # - 'true' or any other value: force pre-release
+        is-draft: false # Set to 'true' to create a release draft instead of publishing right away
+        
+        # ADVANCED USE
+        # The main "magic" of nice release notes is done by dynamically
+        # building a config for `orhun/git-cliff-action`.
+        # That's what all the 'cat-*' settings below used for.
+        # But you can completely bypass this logic and instead provide
+        # your own custom config for `git-cliff`... however, if you do,
+        # the good question is why do you use "Just release it!" in the
+        # first place: you're likely better off just using `git-cliff`
+        # directly. Though, still, if you wish, here it is:
+        cliff-config-file: '' # Path to custom git-cliff (toml) config
+        # ... but are you sure? Maybe what you actually need is:
+        # - request a feature: https://github.com/Lex-DRL/just-release-it-action/issues
+        # - or PR it: https://github.com/Lex-DRL/just-release-it-action/pulls
+        github-token: "${{ github.token }}" # For extremely fancy use cases,
+        # you can provide a non-default token.
+        # Alternatively, a global workflow-level `GITHUB_TOKEN` env-var
+        # could be used instead.
+        # Don't touch this setting unless you **really** know
+        # what you're doing and why.
+        
+        # ALERTS
+        # By default, the "important" categories
+        # (Breaking Changes, Deprecations, Rollbacks)
+        # are wrapped into GitHub alert blocks.
+        cat-alert-blocks: true # When 'false':
+        # - such blocks are disabled
+        # - these categories are output as usual
+        
+        # CATEGORY CUSTOMIZATION
+        # You're free to rename the category titles, as they appear
+        # in the release notes. However, please make sure each of them
+        # stays unique and doesn't contain any HTML tags - or it might
+        # lead to messed up release notes.
+        # Regardless of the order you specify them in, categories always
+        # appear in release notes in the following order:
+        cat-breaking: '💥 Breaking Changes 💥'
+        cat-depr: '⚠️ Deprecations'
+        cat-revert: '↩️ Rollbacks'
+        cat-feat: '✨ New Features'
+        cat-enhance: '🚀 Improvements'
+        cat-fix: '🛠️ Fixes'
+        cat-perf: '⚡ Performance'
+        cat-security: '🔒 Security'
+        cat-doc: '📝 Documentation'
+        cat-refactor: '♻️ Refactor'
+        cat-test: '🔬 Tests'
+        cat-style: '🎨 Code Style'
+        cat-build: '📦 Build/Packaging'
+        cat-ci: '🤖 CI/CD'
+        cat-chore: '🧹 Maintenance'
+        cat-version: 'Version'
+        cat-unclassified-multi: '🔀 Other changes' # When appears along with other categories
+        cat-unclassified-only: "⚙️ What's changed" # When all the commits for the release are "unclassified"
 ```
 
-Below are the available action inputs, grouped by their use case.
-
-### Version source
-
-Where to read version from:
-- `project-toml-file`: local path to the TOML file containing the version. Default: `pyproject.toml`
-
-### Dynamic version
+## Dynamic version
 
 (i.e., fetching version dynamically from a dedicated python file)
 
 > [!WARNING]
 > **TODO** 🚧🏗️: Planned but not yet implemented
-
-### Attached files
-
-- `attach-files`: Glob of files to attach (e.g. `dist/*`). Leave empty (default) for source-only release. Note: it's your responsibility to prepare these files with the previous steps in the workflow.
-
-### Python setup and skipped steps
-
-> [!NOTE]
-> - Empty string (`''`) and `'false'` are treated as disabled.
-> - Everything else (including a string made of nothing but spaces) is treated as enabled.
-
-- `skip-python-setup`: Internally, the action uses python, so it installs it during the run. However, if you already set it up in your workflow (i.e., you run `actions/setup-python` yourself), you can skip it inside the action. Default: `false` (do the python setup).
-- `python-version`: If you let the action set up python, this specifies which version to use. Default: `3.x` (latest Python 3 available).
-- `skip-version-standardize`: Skip [standardization of the version string](https://github.com/Lex-DRL/standardize-version-action) and use the raw version value instead. Default: `false` (standardize the version).
-
-### Release status
-
-- `is-pre-release`: Override pre-release status:
-  - `''` (empty, default) - let the version-standardizing step to decide (or `false` if this step is skipped).
-  - `false` - force regular release.
-  - `true` or any other value - force pre-release.
-- `is-draft`: Create release as draft. Default: `false`
-
-### Alert blocks for important categories
-
-By default, three "warning" categories (`💥 Breaking Changes 💥`, `⚠️ Deprecations`, `↩️ Rollbacks`) are formatted as GitHub's alerts.
-- `cat-alert-blocks`: set to `false` to disable that behavior and format them the same way as all other categories. Default: `true`
-
-### Category names
-
-You're free to rename the category titles, as they're shown in the release notes. However, please make sure each of them stays unique and doesn't contain any HTML tags - or it might lead to an unexpected behavior.
-- `cat-breaking`: 💥 Breaking Changes 💥
-- `cat-depr`: ⚠️ Deprecations
-- `cat-revert`: ↩️ Rollbacks
-- `cat-feat`: ✨ New Features
-- `cat-enhance`: 🚀 Improvements
-- `cat-fix`: 🛠️ Fixes
-- `cat-perf`: ⚡ Performance
-- `cat-security`: 🔒 Security
-- `cat-doc`: 📝 Documentation
-- `cat-refactor`: ♻️ Refactor
-- `cat-test`: 🔬 Tests
-- `cat-style`: 🎨 Code Style
-- `cat-build`: 📦 Build/Packaging
-- `cat-ci`: 🤖 CI/CD
-- `cat-chore`: 🧹 Maintenance
-- `cat-version`: Version
-- `cat-unclassified-multi`: 🔀 Other changes - the title used for an unclassified / "Other Changes" category, when any other categories are also detected for a release.
-- `cat-unclassified-only`: ⚙️ What's changed - The title used when **only** the unclassified / "Other Changes" category (and optionally, "Version") is detected for a release.
-
-### Your own `git-cliff` config
-
-You can **fully** override how this action generates release notes by providing your own config - to add your own categories, change the matching keywords, etc. However, at this point why using this action at all? You're probably better off just using [orhun/git-cliff-action](https://github.com/orhun/git-cliff-action) directly.
-
-Maybe, if you miss some features, you should open an [issue](https://github.com/Lex-DRL/just-release-it-action/issues) or a [PR](https://github.com/Lex-DRL/just-release-it-action/pulls)? Still, it's your choice:
-- `cliff-config-file`: An in-repo path to your own TOML file (e.g. `git-cliff.toml`).
-
-### GitHub token
-
-- `github-token`: For extremely fancy use cases, provide a custom token yourself. Alternatively, a global workflow-level `GITHUB_TOKEN` environment variable could be used instead. Default... is the default token. Don't touch it unless you **really** know what you're doing and why.
 
 ## Outputs
 

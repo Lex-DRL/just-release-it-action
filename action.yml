@@ -20,6 +20,52 @@ inputs:
     description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
     required: false
     default: ''
+
+  # PYTHON SETUP
+  skip-python-setup:
+    description: 'Skip setup-python step if caller already did it.'
+    required: false
+    default: 'false'
+  python-version:
+    description: 'Python version to use internally.'
+    required: false
+    default: '3.x'
+
+  # VERSION STANDARDIZATION
+  skip-version-standardize:
+    description: 'Skip standardizing the version for the release title/tag (see: Lex-DRL/standardize-version-action)'
+    required: false
+    default: 'false'
+
+  # RELEASE TOGGLES
+  is-pre-release:
+    description: |
+      Override pre-release status:
+      - '' (empty, default): let the version-standardizing step to decide (or 'false' if this step is skipped)
+      - 'false': force regular release
+      - 'true' or any other value: force pre-release
+    required: false
+    default: ''
+  is-draft:
+    description: 'Create release as draft'
+    required: false
+    default: 'false'
+
+  # ADVANCED USE
+  cliff-config-file:
+    description: |
+      Provide an in-repo path to your own TOML file (e.g. "git-cliff.toml") with custom config for `orhun/git-cliff-action` (used internally to generate changelog).
+      When provided, it completely replaces the template that comes with "Just release it!" - including all the detected categories, the release notes format... everything.
+      When left empty, the bundled one is used.
+    required: false
+    default: ''
+  github-token:
+    description: "GitHub API token (used for remote PR metadata by git-cliff + for the actual release)"
+    required: false
+    default: "${{ github.token }}"
+
+  # CATEGORY CUSTOMIZATION
+
   cat-alert-blocks:
     description: |
       Wrap Breaking Changes, Deprecations and Rollbacks sections into GitHub alert blocks -
@@ -27,6 +73,7 @@ inputs:
       Set to 'false' / empty string to disable and render them as plain sections like all others.
     required: false
     default: 'true'
+
   cat-breaking:
     description: 'The title used for "Breaking Changes" category.'
     required: false
@@ -102,41 +149,6 @@ inputs:
     description: "The title used when only the unclassified / \"Other Changes\" category (and optionally, \"Version\") is detected for a release."
     required: false
     default: "⚙️ What's changed"
-  cliff-config-file:
-    description: |
-      Provide an in-repo path to your own TOML file (e.g. "git-cliff.toml") with custom config for `orhun/git-cliff-action` (used internally to generate changelog).
-      When provided, it completely replaces the template that comes with "Just release it!" - including all the detected categories, the release notes format... everything.
-      When left empty, the bundled one is used.
-    required: false
-    default: ''
-  skip-version-standardize:
-    description: 'Skip standardizing the version for the release title/tag (see: Lex-DRL/standardize-version-action)'
-    required: false
-    default: 'false'
-  skip-python-setup:
-    description: 'Skip setup-python step if caller already did it.'
-    required: false
-    default: 'false'
-  python-version:
-    description: 'Python version to use internally.'
-    required: false
-    default: '3.x'
-  is-pre-release:
-    description: |
-      Override pre-release status:
-      - '' (empty, default) - let the version-standardizing step to decide (or 'false' if this step is skipped)
-      - 'false' - force regular release
-      - 'true' or any other value - force pre-release
-    required: false
-    default: ''
-  is-draft:
-    description: 'Create release as draft'
-    required: false
-    default: 'false'
-  github-token:
-    description: "GitHub API token (used for remote PR metadata by git-cliff + for the actual release)"
-    required: false
-    default: "${{ github.token }}"
 
 #  skip-checkout:
 #    description: 'true if caller already checked out the repo'
