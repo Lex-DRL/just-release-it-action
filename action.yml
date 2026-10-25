@@ -73,6 +73,10 @@ inputs:
       Set to 'false' / empty string to disable and render them as plain sections like all others.
     required: false
     default: 'true'
+  cat-header-level:
+    description: 'Level of headers (2-5) for categories.'
+    required: false
+    default: '3'
 
   cat-breaking:
     description: 'The title used for "Breaking Changes" category.'
@@ -261,6 +265,7 @@ runs:
       shell: bash
       env:
         cat_alert_blocks: ${{ inputs.cat-alert-blocks }}
+        cat_header_level: ${{ inputs.cat-header-level }}
         cat_breaking: ${{ inputs.cat-breaking }}
         cat_depr: ${{ inputs.cat-depr }}
         cat_revert: ${{ inputs.cat-revert }}

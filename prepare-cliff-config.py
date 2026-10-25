@@ -62,6 +62,7 @@ def toml_repr(string: str, dont_wrap_in_quotes = False) -> str:
 @_dataclass
 class ConfigGenerator:
 	cat_alert_blocks: bool = True
+	cat_header_level: int = 3
 
 	cat_breaking: str = '💥 Breaking Changes 💥'
 	cat_depr: str = '⚠️ Deprecations'
@@ -482,7 +483,7 @@ body = """
     {%- endif -%}
   {%- endif -%}
   {#- Output the category title: -#}
-{{ alert_indent }}## {{ display_group }}
+{{ alert_indent }}${{ PUT_HEADER_DASHES_HERE }} {{ display_group }}
 {{ alert_indent ~ "\n" -}}
   {%- for commit in commits -%}
     {%- set msg = commit.message | trim -%}
@@ -536,6 +537,12 @@ body = """
 			alert_lines_str if self.cat_alert_blocks else ''
 		)
 
+		header_dashes = '#' * max(self.cat_header_level, 1)
+		lines_str = lines_str.replace(
+			'${{ PUT_HEADER_DASHES_HERE }}',
+			header_dashes
+		)
+
 		# Since the template itself contains A TON of curly braces,
 		# let's put the values with simple replace instead of format:
 		# noinspection PyTypeChecker
@@ -576,6 +583,7 @@ body = """
 class EnvInputs(_EnvInputsABC):
 	"""Script 'arguments' passed as env-vars (for security reasons)."""
 	cat_alert_blocks: bool
+	cat_header_level: int
 
 	cat_breaking: str
 	cat_depr: str
@@ -602,8 +610,8 @@ class EnvInputs(_EnvInputsABC):
 	out_config_file: str
 
 	def __post_init__(self):
-		# All the passed args except for `cat_alert_blocks` must be single-line strings:
-		skipped = {'cat_alert_blocks', }
+		# All the passed string args must be single-line strings:
+		skipped = {'cat_alert_blocks', 'cat_header_level'}
 		for field in _fields(self):
 			name = field.name
 			if name in skipped:
@@ -611,6 +619,12 @@ class EnvInputs(_EnvInputsABC):
 			value = getattr(self, name)
 			value = _cleanup_as_single_line(value)
 			setattr(self, name, value)
+
+		cat_header_level = self.cat_header_level
+		if not isinstance(cat_header_level, int):
+			raise TypeError(f"Invalid type for 'cat-header-level': {cat_header_level!r}")
+		if not (2 <= cat_header_level <= 5):
+			raise ValueError(f"Invalid value for 'cat-header-level' (must be 2-5): {cat_header_level!r}")
 
 
 def main(fallback_out_file='cliff.just-release-it.toml') -> None:

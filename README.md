@@ -193,15 +193,18 @@ jobs:
         # Don't touch this setting unless you **really** know
         # what you're doing and why.
         
-        # ALERTS
+        # CATEGORY CUSTOMIZATION
+
         # By default, the "important" categories
         # (Breaking Changes, Deprecations, Rollbacks)
         # are wrapped into GitHub alert blocks.
         cat-alert-blocks: true # When 'false':
         # - such blocks are disabled
         # - these categories are output as usual
+        cat-header-level: '3' # Level of headers (2-5) for categories.
+        # H1 is reserved for the releases page itself,
+        # H2 is release name
         
-        # CATEGORY CUSTOMIZATION
         # You're free to rename the category titles, as they appear
         # in the release notes. However, please make sure each of them
         # stays unique and doesn't contain any HTML tags - or it might
