@@ -175,18 +175,18 @@ runs:
 #        cache: 'pip'
 
     - name: ➡️ Extract version from 'pyproject.toml'
-      id: toml-version
-      uses: SebRollen/toml-action@v1.2.0
+      id: extract-version
+      uses: Lex-DRL/pyproject-toml-version-action@v1
       with:
-        file: ${{ inputs.project-toml-file }}
-        field: 'project.version'
+        toml-file: ${{ inputs.project-toml-file }}
+        skip-python-setup: true
 
     - name: 🔢 Standardize Version
       id: standard-version
       if: inputs.skip-version-standardize == '' || inputs.skip-version-standardize == 'false'
-      uses: Lex-DRL/standardize-version-action@main
+      uses: Lex-DRL/standardize-version-action@v1
       with:
-        version: ${{ steps.toml-version.outputs.value }}
+        version: ${{ steps.extract-version.outputs.version }}
         skip-python-setup: true
 
     - name: Set version outputs (whether with standardization or not)
@@ -195,9 +195,9 @@ runs:
       env:
         switch: ${{ inputs.skip-version-standardize }}
         force_one_line: 'true'
-        tag_skip: ${{ steps.toml-version.outputs.value }}
+        tag_skip: ${{ steps.extract-version.outputs.version }}
         tag_std: ${{ steps.standard-version.outputs.v }}
-        raw_version_skip: ${{ steps.toml-version.outputs.value }}
+        raw_version_skip: ${{ steps.extract-version.outputs.version }}
         raw_version_std: ${{ steps.standard-version.outputs.full }}
         is_pre_skip: ''
         is_pre_std: ${{ steps.standard-version.outputs.is-pre }}

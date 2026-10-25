@@ -72,7 +72,7 @@ TL;DR:
 ## What does it do, specifically?
 
 The action:
-- Reads the current version from `pyproject.toml` (using [SebRollen/toml-action](https://github.com/SebRollen/toml-action)).
+- [Reads the current version from `pyproject.toml`](https://github.com/Lex-DRL/pyproject-toml-version-action).
 - [Standardizes it](https://github.com/Lex-DRL/standardize-version-action) for the release name/tag.
 - Detects the changelog range: from the last published release to the latest commit in the branch.
 - Builds a changelog (using [orhun/git-cliff-action](https://github.com/orhun/git-cliff-action) + a custom config).
