@@ -141,7 +141,6 @@ Below are the available action inputs, grouped by their use case.
 
 Where to read version from:
 - `project-toml-file`: local path to the TOML file containing the version. Default: `pyproject.toml`
-- `project-toml-version-field`: in that file, what field to read. Default: `project.version`
 
 ### Dynamic version
 

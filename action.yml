@@ -16,10 +16,6 @@ inputs:
     description: 'Path to a TOML file to extract version from.'
     required: false
     default: 'pyproject.toml'
-  project-toml-version-field:
-    description: "A specific field in TOML file to read version from."
-    required: false
-    default: 'project.version'
   attach-files:
     description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
     required: false
@@ -183,7 +179,7 @@ runs:
       uses: SebRollen/toml-action@v1.2.0
       with:
         file: ${{ inputs.project-toml-file }}
-        field: ${{ inputs.project-toml-version-field }}
+        field: 'project.version'
 
     - name: 🔢 Standardize Version
       id: standard-version
