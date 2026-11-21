@@ -16,6 +16,10 @@ inputs:
     description: 'Path to a TOML file to extract version from.'
     required: false
     default: 'pyproject.toml'
+  dynamic-version-field:
+    description: 'If dynamic version is used along with any Fallback backend, what field to read for the dynamic-version-file path from your "*.toml".'
+    required: false
+    default: ''
   attach-files:
     description: 'Glob of files to attach (e.g. "dist/*"). Leave empty (default) for source-only release.'
     required: false
@@ -197,6 +201,7 @@ runs:
       uses: Lex-DRL/pyproject-toml-version-action@v1
       with:
         toml-file: ${{ inputs.project-toml-file }}
+        dynamic-field: ${{ inputs.dynamic-version-field }}
         skip-python-setup: true
 
     - name: 🔢 Standardize Version

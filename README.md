@@ -23,6 +23,7 @@ An example of generated release: https://github.com/Lex-DRL/test-ComfyUI-dummy/r
 > ### ULTRA-TL;DR
 > - Just use the action in your GitHub workflow.
 > - Even with no configuration, it should "just work" as long as you have version in `pyproject.toml`, and at least somewhat-organized commit history.
+> - Dynamic versions are supported, but with nuances. See [`pyproject.toml` version 🔢 Action](https://github.com/Lex-DRL/pyproject-toml-version-action).
 
 ### TL;DR
 - Have a `pyproject.toml` file in the repo root.
@@ -151,6 +152,7 @@ jobs:
       uses: Lex-DRL/just-release-it-action@v1
       with:
         project-toml-file: 'pyproject.toml' # Path to the TOML file in your repo to extract version from.
+        dynamic-version-field: 'tool.my-backend.version.dynamic_path' # If dynamic version is used ALONG WITH any Fallback backend, what field to read for the dynamic-version-file path from your "*.toml".
         attach-files: '' # Glob of files to attach (e.g. "dist/*").
         # Leave empty/unset for source-only release.
         # As an example config for PyPI build+release (with wheel), see:
